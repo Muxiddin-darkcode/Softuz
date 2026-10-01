@@ -3,10 +3,10 @@ from typing import List
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
-    BOT_TOKEN: str = "YOUR_BOT_TOKEN_HERE"
-    ADMINS: str = "123456789"
-    STORAGE_CHANNEL_ID: int = -1001234567890
-    DATABASE_URL: str = "sqlite+aiosqlite:///data/bot_database.sqlite3"
+    BOT_TOKEN: str = "8973630874:AAEP3pLmFAEFUgRiXx35CIWdHTd1Vna42HU"
+    ADMINS: str = "8887751785"
+    STORAGE_CHANNEL_ID: int = -1003683524435
+    DATABASE_URL: str = "postgresql://postgres.fmvqghythrtrpktjjfup:FrQo52cP5azl8r19@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres"
 
     model_config = SettingsConfigDict(
         env_file=".env",

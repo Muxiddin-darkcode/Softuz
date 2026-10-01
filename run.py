@@ -139,8 +139,8 @@ async def start_web_server() -> web.AppRunner:
     """Render Web Service port talab qilgani va UptimeRobot uchun web server."""
     port = int(os.environ.get("PORT", 8080))
     app = web.Application()
-    app.router.add_get("/", handle_ping)
-    app.router.add_get("/health", handle_ping)
+    app.router.add_route("*", "/", handle_ping)
+    app.router.add_route("*", "/health", handle_ping)
 
     runner = web.AppRunner(app)
     await runner.setup()
