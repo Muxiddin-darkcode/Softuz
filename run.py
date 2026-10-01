@@ -1,7 +1,9 @@
 import asyncio
 import logging
+import os
 import sys
 
+from aiohttp import web
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import BotCommand, BotCommandScopeDefault, BotCommandScopeChat
@@ -71,8 +73,91 @@ async def init_database():
         await seed_default_categories(session)
     logger.info("✅ Standart kategoriyalar tekshirildi.")
 
+async def handle_ping(request: web.Request) -> web.Response:
+    """Render va UptimeRobot uchun salomatlik tekshiruvi (Health Check) va chiroyli status sahifasi."""
+    html_content = """<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SoftUz Bot - Online</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f172a;
+            color: #f8fafc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .card {
+            background: #1e293b;
+            padding: 2.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            text-align: center;
+            max-width: 420px;
+            border: 1px solid #334155;
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            background: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+            padding: 0.4rem 0.9rem;
+            border-radius: 9999px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+        }
+        .dot {
+            width: 8px;
+            height: 8px;
+            background: #4ade80;
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 8px #4ade80;
+        }
+        h1 { margin: 0 0 0.5rem 0; font-size: 1.4rem; }
+        p { color: #94a3b8; font-size: 0.95rem; margin: 0; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="badge"><span class="dot"></span> Online 24/7</div>
+        <h1>SoftUz Telegram Boti</h1>
+        <p>Bot serverda muvaffaqiyatli ishlamoqda va yangilanishlarni qabul qilmoqda.</p>
+    </div>
+</body>
+</html>"""
+    return web.Response(text=html_content, content_type="text/html", status=200)
+
+async def start_web_server() -> web.AppRunner:
+    """Render Web Service port talab qilgani va UptimeRobot uchun web server."""
+    port = int(os.environ.get("PORT", 8080))
+    app = web.Application()
+    app.router.add_get("/", handle_ping)
+    app.router.add_get("/health", handle_ping)
+
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    logger.info(f"🌐 Web server {port}-portda muvaffaqiyatli ishga tushdi.")
+    return runner
+
 async def main():
     logger.info("🚀 Dasturlar Telegram Boti ishga tushmoqda...")
+
+    # Web serverni ishga tushirish (Render port tekshiruvi va UptimeRobot uchun)
+    web_runner = None
+    try:
+        web_runner = await start_web_server()
+    except Exception as e:
+        logger.warning(f"Web serverni ishga tushirishda ogohlantirish: {e}")
 
     # Bazani ishga tushirish
     await init_database()
@@ -118,6 +203,11 @@ async def main():
         await bot.delete_webhook(drop_pending_updates=True)
         await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
     finally:
+        if web_runner:
+            try:
+                await web_runner.cleanup()
+            except Exception:
+                pass
         await bot.session.close()
         await engine.dispose()
         logger.info("🛑 Bot to'xtatildi.")
